@@ -6,6 +6,7 @@
 extern "C"
 {
 #endif
+
 //cJSON Types.cJSON has seven types:number,false,true,null,object,array,string
 #define cJSON_FALSE             0
 #define cJSON_TRUE              1
@@ -52,7 +53,7 @@ extern char *       cJSON_PrintBuffered(cJSON *item,int prebuffer,int fmt);
 //delete cJSON entities
 extern void         cJSON_Delete(cJSON *ptr);
 
-
+//get size of array
 extern int	        cJSON_GetArraySize(cJSON * array);
 //Returns the element in the array marked index
 extern cJSON *      cJSON_GetArrayItem(cJSON * array,int index);
@@ -78,25 +79,25 @@ extern cJSON *      cJSON_CreateIntArray(const int * numbers,int count);
 extern cJSON *      cJSON_CreateFloatArray(const float * numbers,int count);
 extern cJSON *      cJSON_CreateDoubleArray(const double * numbers,int count);
 extern cJSON *      cJSON_CreateStringArray(const char ** strings,int count);
-
+/*add item to array*/
 extern void         cJSON_AddItemToArray(cJSON * array,cJSON * item);
 extern void         cJSON_AddItemToObject(cJSON * array,const char *string,cJSON * object);
 extern void	        cJSON_AddItemToObjectCS(cJSON *object,const char *string,cJSON *item);
 extern void         cJSON_AddItemReferenceToArray(cJSON * array,cJSON * item);
 extern void         cJSON_AddItemReferenceToObject(cJSON *object,const char *string,cJSON *item);
-
+/*delete item from array*/
 extern cJSON *      cJSON_DetachItemFromArray(cJSON * array,int which);
 extern void         cJSON_DeleteItemFromArray(cJSON * array,int which);
 extern cJSON *      cJSON_DetachItemFromArray(cJSON * array,const char * string);
 extern void         cJSON_DeleteItemFromArray(cJSON * array,const char * string);
-
+/*insert or repleace the item*/
 extern void         cJSON_InsertItemInArray(cJSON * array,int which,cJSON *newItem);
 extern void         cJSON_ReplaceItemInArray(cJSON * array,int which,cJSON * newItem);
 extern void         cJSON_ReplaceItemInObject(cJSON *object,int which,cJSON * newItem);
 
 extern cJSON *      cJSON_Duplicate(cJSON *item,int recurse);
 extern cJSON *      cJSON_ParseWithOpts(const char *value,const char **return_parse_end,int require_null_terminated);
-
+//clean somthing that not important such as /*,//
 extern void cJSON_Minify(char *json);
 
 #define cJSON_AddNullToObject(object,name)		cJSON_AddItemToObject(object, name, cJSON_CreateNull())
