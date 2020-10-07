@@ -8,9 +8,10 @@
 
 #include "MycJSON.h"
 
-const char * exception;
-const char * cJSON_GetErrorPtr(){return exception;};
+const char * exception;                                             //error 
+const char * cJSON_GetErrorPtr(){return exception;};                //return error and exit program
 
+//like strcmp function,but it is change some charactor which is 'A' to 'a' 
 static int cJSON_strcasecmp(const char *firstString,const char *secondString)
 {
     if(!firstString)return (firstString == secondString)?0:1;//看看地址是不是一样的
@@ -21,9 +22,10 @@ static int cJSON_strcasecmp(const char *firstString,const char *secondString)
     //我认为比较多余，故去掉
 }
 
-static void *(*cJSON_malloc)(size_t sz) = malloc;//定义一个函数指针并初始化指向malloc函数
+static void *(*cJSON_malloc)(size_t sz) = malloc;
 static void (*cJSON_free)(void *ptr) = free;
 
+//duplicate string from str and return the duplicated string
 static char * cJSON_String_Duplicate(const char * str)
 {
     size_t len;
@@ -40,7 +42,8 @@ void cJSON_InitHooks(cJSON_Hooks* hooks)
     if(!hooks){
         cJSON_malloc = malloc;
         cJSON_free = free;
-    }
+    }//if hook is NULL ,now we must let function pointer point malloc function and free function
+    //set CJSON_malloc function point 
     cJSON_malloc = (hooks->malloc_fn)?hooks->malloc_fn:malloc;
     cJSON_free = (hooks->free_fn)?hooks->free_fn:free;
 }
@@ -93,29 +96,47 @@ static const char *parse_number(cJSON * item,const char * num)
     item -> type = cJSON_NUMBER;
     return num;
 }
-//最小二次方
+//比x最小的二次方
 static int pow2gt(int x){--x;	x|=x>>1;	x|=x>>2;	x|=x>>4;	x|=x>>8;	x|=x>>16;	return x+1;}
 
-typedef struct {char *buffer; int length; int offset; } printbuffer;
+typedef struct {char *buffer; int length; int offset; } printbuffer;//缓存区
 
 static char *ensure(printbuffer *p,int needed)
-{//确保enough
+{
+    //make sure enough buffer
     char * newbuffer;
     int newsize;
     if(!p || !p -> buffer) return 0;
     needed += p->offset;
+
     if(needed<=p->length) return p->buffer + p->offset;
 
+
+    //not enough ,we need malloc new space
     newsize = pow2gt(needed);
     newbuffer = (char *)cJSON_malloc(newsize);
-    if(!newbuffer){cJSON_free(p->buffer);p->length=0;p->buffer = 0;return 0;}
+    if(!newbuffer)
+    {
+        //malloc error ,so free buffer,set something zero 
+        cJSON_free(p->buffer);
+        p->length=0;
+        p->buffer = 0;
+        return 0;
+    }
+    /*old code is :
     if(newbuffer) memcpy(newbuffer,p->buffer,p->length);
+    i think newbuffer is null ,the function will return
+    so i change the code
+    */
+    memcpy(newbuffer,p->buffer,p->length);
     cJSON_free(p->buffer);
     p->length = newsize;
     p->buffer = newbuffer;
+    //return pointer which point no value assigned
     return newbuffer + p -> offset;
-}
 
+}
+//i don't know,but the function need double buffer lenth
 static int update(printbuffer *p)
 {
     char *str;
@@ -134,10 +155,12 @@ static char * print_number(cJSON * item,printbuffer *p)
         else str = (char *)cJSON_malloc(2);
         if(str) strcpy(str,"0");
     }
+    //电脑不是很精确故：这样子写
     else if(fabs(((double )item ->valueInt)-d)<=DBL_EPSILON&&d<=INT_MAX&&d>=INT_MIN)
     {
-        if(p)   str = ensure(p,21);
-        else    str = (char *)cJSON_malloc(21);
+        if(p)   str = ensure(p,21); //申请32内存
+        else    str = (char *)cJSON_malloc(21);/* 2^64+1 can be represented in 21 chars. */
+        //真节约，2^64+1一共20位数字+1个标识符
         if(str) sprintf(str,"%d",item->valueInt);
     }
     else
@@ -146,9 +169,9 @@ static char * print_number(cJSON * item,printbuffer *p)
         else  str = (char *)cJSON_malloc(64);
         if(str)
         {
-            if(fabs(floor(d) - d)<=DBL_EPSILON && fabs(d)<1.0e60)   sprintf(str,"%.0f",d);
-            else if(fabs(d)<1.0e-6||fabs(d)>1.0e9)                  sprintf(str,"%e",d);
-            else                                                    sprintf(str,"%f",d);                       
+            if(fabs(floor(d) - d)<=DBL_EPSILON && fabs(d)<1.0e60)   sprintf(str,"%.0f",d);//小数无法表示
+            else if(fabs(d)<1.0e-6||fabs(d)>1.0e9)                  sprintf(str,"%e",d);//太大，太小了
+            else                                                    sprintf(str,"%f",d);//刚刚好               
         }
     }
     return str;
@@ -170,7 +193,12 @@ static unsigned parse_hex4(const char *str)//转换16进制的
 static const unsigned char firstByteMark[7] = { 0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC };
 static const char *parse_string(cJSON *item,const char *str)
 {
-    const char *ptr = str + 1;char *ptr2;char *out;int len = 0;unsigned uc,uc2;
+    const char *ptr = str + 1;
+    char *ptr2;
+    char *out;
+    int len = 0;
+    unsigned uc,uc2;
+    
     if(*str!='\"'){exception = str;return 0;}
     while(*ptr!='\"'&&*ptr&&++len)if(*ptr++ == '\\')ptr++;//出现"\\""
     out = (char *)cJSON_malloc(len + 1);
