@@ -197,18 +197,39 @@ static const char *parse_string(cJSON *item,const char *str)
     char *ptr2;
     char *out;
     int len = 0;
-    unsigned uc,uc2;
-    
-    if(*str!='\"'){exception = str;return 0;}
-    while(*ptr!='\"'&&*ptr&&++len)if(*ptr++ == '\\')ptr++;//出现"\\""
+    unsigned uc,uc2;//汉字转义字符考虑UTF-8和UTF-16
+
+    //检测出来这个是"那么继续，不是则错误
+    if(*str!='\"')
+    {
+        exception = str;
+        return 0;
+    }
+    /*
+    while(*ptr!='\"' && *ptr && ++len)
+        if(*ptr++ == '\\')ptr++;//出现"\""
+    */
+    while(*ptr != '\"'&& *ptr == '\0')
+    {
+        /*
+        这里准确来说一开始在：
+            如果输入        "name":"\\hello"
+            在里面是：      \"name\":\"\\\\hello\"
+            所以这个
+        */
+        if(*ptr == '\\')
+            ptr++;
+        ptr++;
+        len++;
+    }
     out = (char *)cJSON_malloc(len + 1);
-    if(!out) return 0;
+    if(!out) return 0;//申请不成功
 
     ptr = str + 1;
     ptr2 = out ;
     while(*ptr != '\"'&&*ptr)
     {
-        if(*ptr!='\\') *ptr2++ = *ptr++;
+        if(*ptr!='\\') {*ptr2 = *ptr;ptr2++;ptr++;}
         else
         {
             ptr++;
@@ -222,15 +243,15 @@ static const char *parse_string(cJSON *item,const char *str)
                 case 'u':
                     uc = parse_hex4(ptr + 1);
                     ptr+=4;
-
+                    
                     if((uc>=0xDC00&&uc<=0xDFFF)||uc==0)break;
 
-                    if(uc>=0xD800&&uc<=0xDBFF)
+                    if(uc>=0xD800&&uc<=0xDBFF)/* UTF16 surrogate pairs.	*/
                     {
-                        if(ptr[1]!='\\'||ptr[2]!='u') break;
+                        if(ptr[1]!='\\'||ptr[2]!='u') break;/* missing second-half of surrogate.	*/
                         uc2 = parse_hex4(ptr + 3);
                         ptr+=6;
-                        if(uc2<0xDC00||uc2>0xDFF)break;
+                        if(uc2<0xDC00||uc2>0xDFF)break;/* invalid second-half of surrogate.	*/
                         uc = 0x10000 + (((uc & 0x3FF)<<10)|(uc2&0x3FF));
                     }
                     len = 4;
@@ -276,7 +297,9 @@ static char * print_string_ptr(const char * str,printbuffer *p)
         if(p) out = ensure(p,len+3);
         else out = (char *) cJSON_malloc(len + 3);
         if(!out) return 0;
-        ptr2 = out;*ptr2++='\"';
+        //赋值
+        ptr2 = out;
+        *ptr2++='\"';
         strcpy(ptr2,str);
         ptr2[len] = '\"';
         ptr2[len + 1] = 0;
@@ -293,7 +316,7 @@ static char * print_string_ptr(const char * str,printbuffer *p)
     }
     ptr = str;
     while((token = *ptr)&&++len){if (strchr("\"\\\b\f\n\r\t",token)) len++; else if (token<32) len+=5;ptr++;}
-
+    //小于32无法打印
     if (p)	out=ensure(p,len+3);
 	else	out=(char*)cJSON_malloc(len+3);
 	if (!out) return 0;
